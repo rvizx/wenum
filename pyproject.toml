@@ -22,7 +22,7 @@ rich = "^13.7.0"
 [tool.poetry.scripts]
 wenum = 'wenum.main:main'
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 pyinstaller = "^6.0.0"
 
 [build-system]

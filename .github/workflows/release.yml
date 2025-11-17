@@ -1,0 +1,95 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev libssl-dev
+      
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+          poetry install
+          pip install pyinstaller
+      
+      - name: Build executable
+        run: |
+          export PYTHONPATH=$PWD/src
+          pyinstaller wenum.spec --clean --noconfirm
+      
+      - name: Verify build
+        run: |
+          if [ ! -f dist/wenum ]; then
+            echo "Error: dist/wenum not found"
+            exit 1
+          fi
+          ls -lh dist/wenum
+          file dist/wenum
+      
+      - name: Test executable
+        run: |
+          chmod +x dist/wenum
+          ./dist/wenum --version || echo "Version check completed"
+      
+      - name: Generate SHA256 hash
+        run: |
+          cd dist
+          sha256sum wenum > wenum.sha256
+          echo "SHA256 hash:"
+          cat wenum.sha256
+      
+      - name: Get tag name
+        id: tag
+        run: echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/wenum
+            dist/wenum.sha256
+          name: Release ${{ steps.tag.outputs.TAG_NAME }}
+          body: |
+            ## wenum ${{ steps.tag.outputs.TAG_NAME }}
+            
+            Standalone executable built with PyInstaller for Linux.
+            
+            ### Files
+            - `wenum` - Standalone executable
+            - `wenum.sha256` - SHA256 checksum file
+            
+            ### Installation
+            ```bash
+            chmod +x wenum
+            ./wenum --help
+            ```
+            
+            ### Verify SHA256
+            ```bash
+            sha256sum -c wenum.sha256
+            ```
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

@@ -1,6 +1,6 @@
 import os
 import sys
-import pkg_resources
+from importlib import resources
 
 from chardet.universaldetector import UniversalDetector
 import chardet
@@ -14,9 +14,16 @@ def get_filter_help_file():
 
     filter_help_text = None
     try:
-        fname = pkg_resources.resource_filename("wenum", FILTER_HELP_FILE)
-        filter_help_text = open(fname).read()
-    except IOError:
+        # Python 3.9+ compatible: use importlib.resources instead of pkg_resources
+        if sys.version_info >= (3, 9):
+            with resources.files("wenum").joinpath(FILTER_HELP_FILE).open('r', encoding='utf-8') as f:
+                filter_help_text = f.read()
+        else:
+            # Fallback for older Python versions
+            import pkg_resources
+            fname = pkg_resources.resource_filename("wenum", FILTER_HELP_FILE)
+            filter_help_text = open(fname).read()
+    except (IOError, FileNotFoundError, ModuleNotFoundError):
         filter_help_text = open(get_path(FILTER_HELP_DEV_FILE)).read()
 
     return filter_help_text

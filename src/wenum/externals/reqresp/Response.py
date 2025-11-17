@@ -1,5 +1,4 @@
 import re
-import cgi
 
 from io import BytesIO
 import gzip
@@ -20,7 +19,21 @@ def get_encoding_from_headers(headers):
     if not content_type:
         return None
 
-    content_type, params = cgi.parse_header(content_type)
+    # Python 3.13+ compatible: cgi.parse_header() was removed
+    # Manually parse Content-Type header (e.g., "text/html; charset=utf-8")
+    if ';' in content_type:
+        main_type, rest = content_type.split(';', 1)
+        main_type = main_type.strip()
+        params = {}
+        for param in rest.split(';'):
+            if '=' in param:
+                key, value = param.split('=', 1)
+                params[key.strip().lower()] = value.strip().strip('"\'')
+    else:
+        main_type = content_type.strip()
+        params = {}
+    
+    content_type = main_type
 
     if "charset" in params:
         return params["charset"].strip("'\"")
